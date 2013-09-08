@@ -1,6 +1,8 @@
 "Introduction to IndexedDB"
 ===============================
 
+* [Slides](https://github.com/fragphace/talk_introduction_to_indexed_db/blob/master/idb.pdf?raw=true)
+
 ## Build
 
 ```
