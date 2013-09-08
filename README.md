@@ -1,4 +1,9 @@
-talk_introduction_to_indexed_db
+"Introduction to IndexedDB"
 ===============================
 
-Meet.js Summit 2012 Talk "Introduction to IndexedDB"
+## Build
+
+```
+$ sudo apt-get install texlive-latex-base latex-beamer texlive-xetex
+$ xelatex idb.tex
+```

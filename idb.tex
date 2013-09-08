@@ -1,0 +1,254 @@
+\documentclass[xetex]{beamer}
+\usepackage{fontspec}
+\usepackage{xunicode}
+\usepackage{xltxtra}
+\usepackage[polish]{babel}
+\usepackage{tabularx}
+\usepackage{color}
+\usepackage{alltt}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{relsize}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{ulem}
+\usepackage{tikz}
+\usetikzlibrary{shapes, arrows, positioning, matrix, fit, backgrounds, calc}
+
+\defaultfontfeatures{Scale=MatchLowercase}
+\setsansfont{Ubuntu}
+\setmonofont{DejaVu Sans Mono}
+
+\definecolor{lightgray}{rgb}{.9,.9,.9}
+\definecolor{darkgray}{rgb}{.4,.4,.4}
+\definecolor{purple}{rgb}{0.65, 0.12, 0.82}
+
+\lstdefinelanguage{JavaScript}{
+  keywords={typeof, new, true, false, catch, function, return, null, catch, switch, var, if, in, while, do, else, case, break},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={class, export, boolean, throw, implements, import, this},
+  ndkeywordstyle=\color{darkgray}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=false,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{purple}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\lstset{
+   language=JavaScript,
+   extendedchars=true,
+   basicstyle=\footnotesize\ttfamily,
+   showstringspaces=false,
+   showspaces=false,
+   numbers=left,
+   numberstyle=\footnotesize,
+   numbersep=9pt,
+   tabsize=2,
+   breaklines=true,
+   showtabs=false,
+   captionpos=b
+}
+
+\usetheme{default}
+\setbeamertemplate{navigation symbols}{}
+
+\title{Save your data}
+\subtitle{Introduction to IndexedDB}
+\author{
+    Paweł Maciejewski\\
+    @fragphace
+}
+\date{}
+
+\begin{document}
+
+    \tikzstyle{block} = [draw, line width=1pt, rectangle, rounded corners, inner sep = 3pt, align=center]
+    \tikzstyle{dbBlock} = [block, draw=red, fill = red!50]
+    \tikzstyle{storeBlock} = [block, draw=blue, fill = blue!50]
+    \tikzstyle{dbArrow} = [->, shorten <=10pt, shorten >=10pt, line width = 0.5pt]
+
+    \begin{frame}[plain] 
+      \titlepage
+      \vspace{-2cm} 
+    \end{frame}    
+    
+    \begin{frame}{Agenda}    
+
+        \begin{enumerate}
+          \item Why Indexed Database?
+          \item Structure
+          \item Transactions
+          \item Database creation
+          \item Basic IndexedDB pattern
+          \item There's (much) more
+        \end{enumerate}     
+        
+    \end{frame}
+
+    \begin{frame}[containsverbatim]{Why Indexed Database?}
+      \textbf{Answer 1}\\
+      There are only Web Storage and Indexed Database (Web SQL is deprecated).
+      In many cases Local Storage is too simple.
+
+      \vspace{20pt}
+
+      \textbf{Answer 2}\\
+      It is good for your programming skills to play with asynchronous API of Indexed Database.
+    \end{frame}
+
+    \begin{frame}{Structure}
+
+      \begin{itemize}        
+        \item IDB enables (more) advanced key-value data management,
+        \item Many databases associated with one origin, many object stores associated with one database
+        \item It's NoSQL: you must take care of mapping relations between data, there is no full text search...
+      \end{itemize}
+
+      \begin{center}
+        \begin{tikzpicture}
+
+            % NODES
+            % Origin
+            \node[block, fill=green!50, draw=green] (origin) { \includegraphics[width=32pt, height=32pt]{img/Website-Home-64.png} };
+            \node[align=center, width = 10pt] [below = 5pt of origin] {
+              \textbf{Origin}
+            };
+
+            % Databases
+            \node (db1) at ($ (origin) + (90pt, 0) $) {\includegraphics [width=32pt, height=32pt] {img/Misc-Database-3-icon.png}};
+            \node (db2) at ($ (db1) - (0, 40pt) $)  {\includegraphics [width=32pt, height=32pt] {img/Misc-Database-3-icon.png}};    
+            \node[text width=100pt, align=center] at ($ (db2) - (0, 35pt) $) {
+              \textbf{Databases}
+            };
+
+            % Object stores
+            \node (store1) at ($ (db1) + (90pt, 0) $) {\includegraphics[width=32pt, height=32pt]{img/Briefcase-256.png}};
+            \node (store2) [below = 15pt of store1] {\includegraphics[width=32pt, height=32pt]{img/Briefcase-256.png}};
+            \node (store3) [below = 5pt of store2] {\includegraphics[width=32pt, height=32pt]{img/Briefcase-256.png}};            
+            \node[text width=100pt, align=center] (stores) [below = 5pt of store3] {
+              \textbf{Object stores}
+            };
+
+            % ARROWS 
+            % Database arrows
+            \path [dbArrow] (origin.east) edge [bend left] (db1.west);
+            \path [dbArrow] (origin.east) edge [bend right] (db2.west);
+
+            % Object stores arrows
+            \path [dbArrow] (db1.east) edge [bend left] (store1.west);
+            \path [dbArrow] (db2.east) edge [bend left] (store2.west);          
+            \path [dbArrow, shorten <= 25pt] (db2.east) edge [bend right] (store3.west);   
+
+
+            % BACKGROUND LAYER
+            \begin{pgfonlayer}{background}
+              \node [dbBlock, fit = (db1) (db2) ] { };  
+              \node [storeBlock, fit = (store1)] { };  
+              \node [storeBlock, fit = (store2) (store3)] { }; 
+            \end{pgfonlayer}
+            
+        \end{tikzpicture}
+
+      \end{center}
+    \end{frame}
+
+    \begin{frame}[containsverbatim]{Transactions}
+      
+      \begin{itemize}
+        \item Every request must be performed within a transaction
+        \item Transaction scope determines the object stores with witch transaction can interact
+        \item There are three modes of transactions:
+          \begin{itemize}
+            \item \verb|READ_ONLY|
+            \item \verb|READ_WRITE|
+            \item \verb|VERSION_CHANGE|
+          \end{itemize}
+      \end{itemize}
+
+      \begin{center}
+        \begin{tikzpicture}
+            \node (req1) {Request};
+            \node [below of = req1] (req2) {Request};
+            \node [below of = req2] (req3) {Request};
+            \node [draw=gray, line width=1pt, rectangle, inner sep = 3pt, fill=gray!40,  right = of req2] (trans) {Transaction};
+
+            % Transaction arrows            
+            \path [dashed] (req1.east) edge (trans.west);
+            \path [dashed] (req2.east) edge (trans.west);
+            \path [dashed] (req3.east) edge (trans.west);    
+            
+            \begin{pgfonlayer}{background}
+              \node [draw, rounded corners, inner sep = 5pt, draw, fit = (req1) (req2) (req3) (trans) ] { };  
+            \end{pgfonlayer}  
+        \end{tikzpicture}
+      \end{center}
+
+
+    \end{frame}
+
+    \begin{frame}[containsverbatim]{Database creation}    
+      \begin{lstlisting}
+// Let's specify db version
+var connectionReq = window.indexedDB.open('myDB', 3); 
+
+connectionReq.onsuccess = function(event) {};
+connectionReq.onerror = function(event) {};
+
+connectionReq.onupgradeneeded = function(event) {
+  var connection = event.target.result;  
+  var storeNames = connection.objectStoreNames;
+
+  if (storeNames.contains('workers')) {
+    // Delete an object store
+    connection.deleteObjectStore('workers');
+  }
+
+  if (!storeNames.contains('employees')) {
+    // Create an object store
+    connection.createObjectStore('employees', { keyPath: 'email'}); 
+  }
+};
+      \end{lstlisting}
+    \end{frame}
+
+    \begin{frame}[containsverbatim]{Basic IndexedDB pattern}
+      \begin{lstlisting}
+var connectionReq = window.indexedDB.open('myDB', 3);
+
+connectionReq.onsuccess = function(event) {
+  var connection = event.target.result;
+  var transaction = connection.transaction('employees', IDBTransaction.READ_WRITE);
+  var employees = transaction.objectStore('employees');
+
+  var setReq = employees.set({ 
+    email: 'fragphace@gmail.com',
+    name: 'Pawel Maciejewski'
+  });
+
+  var getReq = employees.get('fragphace@gmail.com');
+
+  // ...
+};
+      \end{lstlisting}
+    \end{frame}
+
+    \begin{frame}[containsverbatim]{There's (much) more}
+      \begin{itemize}
+        \item Cursors, bounds, indexes, cross-window events
+        \item Not ready for production, new specification implemented only in Firefox 12
+        \item Prefixes for \verb|indexedDB|, \verb|IDBTransaction| and others        
+      \end{itemize}
+    \end{frame}
+    
+    \begin{frame}[plain]
+      \begin{center}
+        \Huge Thank you!
+      \end{center}
+    \end{frame}
+
+            
+\end{document}
