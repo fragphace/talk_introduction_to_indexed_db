@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pl">
+	<head>
+		<meta charset="utf-8" />
+		<title>IndexedDB Test</title>
+    <style>
+      body {
+        background: #f2f2f2;
+        font-size: 18px;
+        font-family: Helvetica Neue, Arial, Helvetica, 'Liberation Sans', FreeSans, sans-serif;
+        margin-top: 50px;
+      }
+      p, ul, fieldset {
+        border: 0;
+        padding: 0;
+        margin: 0;
+      }
+      ul {
+        list-style-type: none;
+      }
+
+      .wrapper {
+        overflow: hidden;
+        margin: 0 auto;
+        width: 1120px;
+      }
+      .wrapper > .dbInfo {
+        float: left;
+        margin-right: 50px;
+      }
+      .wrapper > .output {
+        float: left;
+        width: 700px;
+      }
+            
+      .dbInfo {
+        background: #fff;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+        margin: 0 auto;
+        padding: 20px 30px;
+        width: 250px;
+      }
+      .dbInfo form {
+        margin-bottom: 10px;
+        overflow: hidden;
+      }
+      .dbInfo form > .row {
+        margin-top: 10px;
+      }
+      .dbInfo form > .row:first-child {
+        margin-top: 0;
+      }
+      .dbInfo form > .row > label {
+        display: block;
+        font-size: 13px;
+      }
+
+      .dbInfo .status {
+        height: 30px;
+        line-height: 30px;
+        margin-bottom: 20px;
+      }
+      .dbInfo .actions > .action {
+        margin-top: 10px;
+      }
+      .dbInfo .actions > .action:first-child {
+        margin-top: 0;
+      }
+      .dbInfo .actions > .action > *[data-action] {
+        background: #4B9ED6 -moz-linear-gradient(center top , #4B9ED6 0%, #1E628F 100%);;
+        border: 1px solid #1E628F;
+        border-radius: 3px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 1px 1px rgba(0, 0, 0, 0.3);
+        color: #fff;
+        display: inline-block;
+        height: 36px;
+        line-height: 36px;
+        padding: 0 20px;
+        text-decoration: none;
+        text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
+      }
+      .dbInfo .actions > .action > *[data-action]:hover {
+        background-image: -moz-linear-gradient(top, #57b4f2 0%, #2885bf 100%);
+      }
+      .dbInfo .actions > .action > *[data-action]:active {
+        box-shadow: none;
+        background-image: -moz-linear-gradient(center top , #1E628F 0%, #4B9ED6 100%);
+        line-height: 38px;
+      }
+
+      .output {
+        overflow: auto;
+        height: 480px;
+      }
+      .output > .message {
+        margin-bottom: 4px;
+        text-shadow: 0 1px 0 #FFF;
+      }
+      .output > .message.success { color: #0A0;}
+      .output > .message.error { color: #A00;}
+      .output > .message.record { color: #00A;}
+      .output > .message.info { color: #555;}
+    </style>
+
+	</head>
+	<body>
+
+    <div class="wrapper">
+      <div class="dbInfo">
+        <ul class="actions">
+          <li class="action">
+            <form action="#" class="connectionInfo">
+              <fieldset class="row">
+                <label for="dbName">Database name:</label>
+                <input id="dbName" value="idbTest" />
+              </fieldset>
+
+              <fieldset class="row">
+                <label for="version">Version:</label>
+                <input id="version" value="1" />
+              </fieldset>
+            </form>
+            <a href="#" data-action="connect">Connect</a>
+          </li>
+          <li class="action">
+            <a href="#" data-action="close">Close connection</a>
+          </li>
+          <li class="action">
+            <a href="#" data-action="delete">Delete database</a>
+          </li>
+          <li class="action add">
+            <a href="#" data-action="getAll">Get all</a>
+            </li>
+          <li class="action something">
+            <a href="#" data-action="something">Something button</a>
+          </li>
+          <li class="action add">
+            <a href="#" data-action="deleteAll">Delete all</a>
+          </li>
+          <li class="action add">
+            <form class="addInfo" action="#">
+              <fieldset class="row">
+                <label for="email">E-mail:</label>
+                <input id="email" />
+              </fieldset>
+
+              <fieldset class="row">
+                <label for="name">Name:</label>
+                <input id="name" />
+              </fieldset>
+
+              <fieldset class="row">
+                <label for="position">Position</label>
+                <input id="position" />
+              </fieldset>
+            </form>
+            <a href="#" data-action="add">Add</a>
+          </li>
+        </ul>     
+
+      </div>
+
+      <ul class="output">
+      </ul>
+    </div>
+
+    <script>
+      window.indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.msIndexedDB;
+      window.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.mozIDBTransaction || window.msIDBTransaction;
+
+      (function() {
+        var dbInfo = document.querySelector('.dbInfo');
+        var output = document.querySelector('.output');
+        if (!dbInfo || !output) {
+          return;
+        }
+
+        dbInfo.querySelector('.actions').addEventListener('click', function(event) {
+          event.preventDefault();
+          var action = event.target.getAttribute('data-action');
+          actions.hasOwnProperty(action) && actions[action]();
+        }, false);
+
+        var log = function(message, type) {
+          output.innerHTML = '<li class="message ' + (type || 'info') + '">' + message + '</li>' + output.innerHTML;
+        };
+        
+        var connection;
+        var actions = {
+          'connect': function() {
+            var request = indexedDB.open((dbInfo.querySelector('#dbName').value || 'idbTest'), (dbInfo.querySelector('#version').value || 0));
+
+            request.onerror = function() {
+              log('connection refused', 'error');
+            };
+
+            request.onsuccess = function() {
+              connection = request.result;
+              log('connected to ' + connection.name + ' (ver. ' + connection.version + ')', 'success');
+
+              connection.onversionchange = function() {
+                log('New version available. Please reset connection!', 'error');
+              };
+            };
+
+            request.onblocked = function() {
+              log('Connection blocked. Please reset connections on other tabs!', 'error');
+            };
+
+            request.onupgradeneeded = function() {
+              connection = request.result;
+              if (!connection.objectStoreNames.contains('employees')){
+                var employees = connection.createObjectStore('employees', { keyPath: 'email' });
+                var req = employees.add({ 
+                  email: 'fragphace@gmail.com',
+                  name: 'Paweł Maciejewski',
+                  position: 'front-end developer'
+                });
+                log('Data store emplyees created, and initial data inserted');
+              }
+            }
+          },
+
+          'getAll': function() {
+            var employees = connection.transaction(['employees']).objectStore('employees');
+            employees.openCursor().onsuccess = function(event) {
+              var cursor = event.target.result;
+              if (cursor) {
+                log(cursor.value.email + ' ' + cursor.value.name + ' ' + cursor.value.position, 'record');
+                cursor.continue();                
+              }
+            };
+            log('Emplyees fetched');
+          },
+
+          'add': function() {
+            var email = dbInfo.querySelector('#email');
+            var name = dbInfo.querySelector('#name');
+            var position = dbInfo.querySelector('#position');
+            if (!email || !email.value || !name || !name.value || !position || !position.value) {
+              alert('You must fill in all fields.');
+              return;
+            }
+
+            var req = connection.transaction('employees', IDBTransaction.READ_WRITE).objectStore('employees').add({
+              email: email.value, 
+              name: name.value, 
+              position: position.value
+            });
+
+            req.onsuccess = function() {
+              log('Emplyee successfuly added', 'success');
+              email.value = '';
+              name.value = '';
+              position.value = '';
+            };
+
+            req.onerror = function() {
+              log('Some error occured', 'error');
+            }
+          },
+
+          'deleteAll': function() {
+            connection.transaction('employees', IDBTransaction.READ_WRITE).objectStore('employees').clear().onsuccess = function() {
+              log('Object store cleared');
+            };
+          },
+
+          'close': function() {
+            if (!connection) {
+              return;
+            }
+            connection && connection.close();
+            connection = null;
+            log('connection closed');
+          },
+
+          'delete': function() {
+            this.close();
+            indexedDB.deleteDatabase('idbTest');
+            log('database deleted');
+          },
+
+          'something': function() {
+            connection.transaction('employees').objectStore('employees').createIndex('name', 'name');
+          }
+        };
+
+      })();
+    </script>
+	</body>
+</html>
